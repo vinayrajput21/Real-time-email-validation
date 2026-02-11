@@ -3,14 +3,12 @@ const { verifyEmail } = require("../src/services/verifyEmail");
 const { validateEmailSyntax } = require("../src/utils/emailvalidator");
 const { getDidYouMean } = require("../src/services/typoService");
 
-// Mock SMTP service
 jest.mock("../src/services/smtpService", () => ({
   checkSMTP: jest.fn()
   }));
 
   const { checkSMTP } = require("../src/services/smtpService");
 
-  // Mock DNS
   jest.spyOn(dns, "resolveMx");
 
   describe("Email Syntax Validation Tests", () => {
