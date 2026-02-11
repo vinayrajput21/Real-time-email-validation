@@ -7,79 +7,104 @@ const { checkSMTP } = require("./smtpService");
 
 async function verifyEmail(email) {
   const startTime = Date.now();
-  const timestamp = new Date().toISOString();
+    const timestamp = new Date().toISOString();
 
-  const baseResponse = {
-    email,
-    result: "invalid",
-    resultcode: 6,
-    subresult: null,
-    domain: null,
-    mxRecords: [],
-    executiontime: 0,
-    error: null,
-    timestamp,
-  };
+      const response = {
+          email,
+              result: "invalid",
+                  resultcode: 6, // default invalid
+                      subresult: null,
+                          domain: null,
+                              mxRecords: [],
+                                  executiontime: 0,
+                                      error: null,
+                                          timestamp,
+                                            };
 
-  try {
-    // Syntax Validation
-    if (!validateEmailSyntax(email)) {
-      baseResponse.subresult = "invalid_syntax";
-      return finalize(baseResponse, startTime);
-    }
+                                              try {
+                                                  // 1️⃣ Syntax Validation
+                                                      if (!validateEmailSyntax(email)) {
+                                                            response.subresult = "invalid_syntax";
+                                                                  return finalize(response, startTime);
+                                                                      }
 
-    const domain = email.split("@")[1];
-    baseResponse.domain = domain;
+                                                                          const domain = email.split("@")[1];
+                                                                              response.domain = domain;
 
-    // MX Lookup
-    const mxRecords = await dns.resolveMx(domain);
-    if (!mxRecords || mxRecords.length === 0) {
-      baseResponse.subresult = "no_mx_records";
-      return finalize(baseResponse, startTime);
-    }
+                                                                                  // 2️⃣ Typo Detection (BEFORE DNS)
+                                                                                      const suggestion = getDidYouMean(email);
+                                                                                          if (suggestion) {
+                                                                                                response.subresult = "typo_detected";
+                                                                                                      response.didyoumean = suggestion;
+                                                                                                            return finalize(response, startTime);
+                                                                                                                }
 
-    baseResponse.mxRecords = mxRecords.map(mx => mx.exchange);
+                                                                                                                    // 3️⃣ MX Lookup
+                                                                                                                        let mxRecords;
+                                                                                                                            try {
+                                                                                                                                  mxRecords = await dns.resolveMx(domain);
+                                                                                                                                      } catch (err) {
+                                                                                                                                            response.result = "unknown";
+                                                                                                                                                  response.resultcode = 3;
+                                                                                                                                                        response.subresult = "dns_error";
+                                                                                                                                                              response.error = err.message;
+                                                                                                                                                                    return finalize(response, startTime);
+                                                                                                                                                                        }
 
-    // SMTP Check (use first MX)
-    const smtpResult = await checkSMTP(
-      mxRecords[0].exchange,
-      email
-    );
+                                                                                                                                                                            if (!mxRecords || mxRecords.length === 0) {
+                                                                                                                                                                                  response.subresult = "no_mx_records";
+                                                                                                                                                                                        return finalize(response, startTime);
+                                                                                                                                                                                            }
 
-    if (smtpResult.code === 250) {
-      baseResponse.result = "valid";
-      baseResponse.resultcode = 1;
-      baseResponse.subresult = "mailbox_exists";
-    } else if (smtpResult.code === 550) {
-      baseResponse.subresult = "mailbox_does_not_exist";
-    } else {
-      baseResponse.result = "unknown";
-      baseResponse.resultcode = 3;
-      baseResponse.subresult = "connection_error";
-    }
+                                                                                                                                                                                                response.mxRecords = mxRecords.map(mx => mx.exchange);
 
-    // Typo detection
-    const suggestion = getDidYouMean(email);
-    if (suggestion && baseResponse.result !== "valid") {
-      baseResponse.subresult = "typo_detected";
-      baseResponse.didyoumean = suggestion;
-    }
+                                                                                                                                                                                                    // 4️⃣ SMTP Check (using first MX record)
+                                                                                                                                                                                                        const smtpResult = await checkSMTP(
+                                                                                                                                                                                                              mxRecords[0].exchange,
+                                                                                                                                                                                                                    email
+                                                                                                                                                                                                                        );
 
-    return finalize(baseResponse, startTime);
+                                                                                                                                                                                                                            if (smtpResult.code === 250) {
+                                                                                                                                                                                                                                  response.result = "valid";
+                                                                                                                                                                                                                                        response.resultcode = 1;
+                                                                                                                                                                                                                                              response.subresult = "mailbox_exists";
+                                                                                                                                                                                                                                                  } 
+                                                                                                                                                                                                                                                      else if (smtpResult.code === 550) {
+                                                                                                                                                                                                                                                            response.result = "invalid";
+                                                                                                                                                                                                                                                                  response.resultcode = 6;
+                                                                                                                                                                                                                                                                        response.subresult = "mailbox_does_not_exist";
+                                                                                                                                                                                                                                                                            } 
+                                                                                                                                                                                                                                                                                else if (smtpResult.code === 450) {
+                                                                                                                                                                                                                                                                                      response.result = "unknown";
+                                                                                                                                                                                                                                                                                            response.resultcode = 3;
+                                                                                                                                                                                                                                                                                                  response.subresult = "greylisted";
+                                                                                                                                                                                                                                                                                                      } 
+                                                                                                                                                                                                                                                                                                          else if (smtpResult.code === "timeout") {
+                                                                                                                                                                                                                                                                                                                response.result = "unknown";
+                                                                                                                                                                                                                                                                                                                      response.resultcode = 3;
+                                                                                                                                                                                                                                                                                                                            response.subresult = "connection_timeout";
+                                                                                                                                                                                                                                                                                                                                } 
+                                                                                                                                                                                                                                                                                                                                    else {
+                                                                                                                                                                                                                                                                                                                                          response.result = "unknown";
+                                                                                                                                                                                                                                                                                                                                                response.resultcode = 3;
+                                                                                                                                                                                                                                                                                                                                                      response.subresult = "connection_error";
+                                                                                                                                                                                                                                                                                                                                                          }
 
-  } catch (error) {
-    baseResponse.result = "unknown";
-    baseResponse.resultcode = 3;
-    baseResponse.subresult = "dns_error";
-    baseResponse.error = error.message;
-    return finalize(baseResponse, startTime);
-  }
-}
+                                                                                                                                                                                                                                                                                                                                                              return finalize(response, startTime);
 
-function finalize(response, startTime) {
-  response.executiontime =
-    (Date.now() - startTime) / 1000;
-  return response;
-}
+                                                                                                                                                                                                                                                                                                                                                                } catch (error) {
+                                                                                                                                                                                                                                                                                                                                                                    response.result = "unknown";
+                                                                                                                                                                                                                                                                                                                                                                        response.resultcode = 3;
+                                                                                                                                                                                                                                                                                                                                                                            response.subresult = "unexpected_error";
+                                                                                                                                                                                                                                                                                                                                                                                response.error = error.message;
+                                                                                                                                                                                                                                                                                                                                                                                    return finalize(response, startTime);
+                                                                                                                                                                                                                                                                                                                                                                                      }
+                                                                                                                                                                                                                                                                                                                                                                                      }
 
-module.exports = { verifyEmail };
+                                                                                                                                                                                                                                                                                                                                                                                      function finalize(response, startTime) {
+                                                                                                                                                                                                                                                                                                                                                                                        response.executiontime =
+                                                                                                                                                                                                                                                                                                                                                                                            (Date.now() - startTime) / 1000;
+                                                                                                                                                                                                                                                                                                                                                                                              return response;
+                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                              module.exports = { verifyEmail };
