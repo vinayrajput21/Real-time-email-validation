@@ -1,1 +1,40 @@
 
+{
+  "name": "email-verification-module",
+  "version": "1.0.0",
+  "description": "Email Verification Module using DNS MX lookup, SMTP validation, typo detection (Levenshtein), and Jest unit testing.",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "test": "jest --coverage"
+  },
+  "keywords": [
+    "email-verification",
+    "smtp",
+    "dns",
+    "mx-lookup",
+    "levenshtein",
+    "nodejs",
+    "backend"
+  ],
+  "author": "Vinay Pawar",
+  "license": "ISC",
+  "dependencies": {
+    "fast-levenshtein": "^3.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
