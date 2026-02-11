@@ -1,7 +1,7 @@
 // src/services/verifyEmail.js
 
 const dns = require("dns").promises;
-const { validateEmailSyntax } = require("../utils/emailValidator");
+const { validateEmailSyntax } = require("../utils/emailvalidator");
 const { getDidYouMean } = require("./typoService");
 const { checkSMTP } = require("./smtpService");
 
