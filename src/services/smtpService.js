@@ -1,7 +1,6 @@
-// src/services/smtpService.js
+
 
 const net = require("net");
-
 function checkSMTP(mxHost, email) {
   return new Promise((resolve) => {
     const socket = net.createConnection(25, mxHost);
