@@ -1,4 +1,3 @@
-// src/services/verifyEmail.js
 
 const dns = require("dns").promises;
 const { validateEmailSyntax } = require("../utils/emailvalidator");
@@ -12,7 +11,7 @@ async function verifyEmail(email) {
       const response = {
           email,
               result: "invalid",
-                  resultcode: 6, // default invalid
+                  resultcode: 6, 
                       subresult: null,
                           domain: null,
                               mxRecords: [],
@@ -22,7 +21,7 @@ async function verifyEmail(email) {
                                             };
 
                                               try {
-                                                  // 1️⃣ Syntax Validation
+                                                  
                                                       if (!validateEmailSyntax(email)) {
                                                             response.subresult = "invalid_syntax";
                                                                   return finalize(response, startTime);
@@ -30,8 +29,6 @@ async function verifyEmail(email) {
 
                                                                           const domain = email.split("@")[1];
                                                                               response.domain = domain;
-
-                                                                                  // 2️⃣ Typo Detection (BEFORE DNS)
                                                                                       const suggestion = getDidYouMean(email);
                                                                                           if (suggestion) {
                                                                                                 response.subresult = "typo_detected";
@@ -39,7 +36,7 @@ async function verifyEmail(email) {
                                                                                                             return finalize(response, startTime);
                                                                                                                 }
 
-                                                                                                                    // 3️⃣ MX Lookup
+                                                                                                              
                                                                                                                         let mxRecords;
                                                                                                                             try {
                                                                                                                                   mxRecords = await dns.resolveMx(domain);
@@ -58,7 +55,7 @@ async function verifyEmail(email) {
 
                                                                                                                                                                                                 response.mxRecords = mxRecords.map(mx => mx.exchange);
 
-                                                                                                                                                                                                    // 4️⃣ SMTP Check (using first MX record)
+                                                                                                                                                                                                    
                                                                                                                                                                                                         const smtpResult = await checkSMTP(
                                                                                                                                                                                                               mxRecords[0].exchange,
                                                                                                                                                                                                                     email
