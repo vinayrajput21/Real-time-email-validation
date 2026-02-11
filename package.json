@@ -21,6 +21,7 @@
   "author": "Vinay Pawar",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.6",
     "express": "^5.2.1",
     "fast-levenshtein": "^3.0.0"
   },
